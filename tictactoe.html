@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tic-Tac-Toe Classic</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #f0f0f0, #e0e0e0);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-top: 10px;
+    }
+
+    #scoreboard {
+      display: flex;
+      justify-content: center;
+      margin: 10px 0;
+      gap: 15px;
+    }
+
+    .score {
+      background-color: #fff;
+      padding: 8px 15px;
+      border-radius: 5px;
+      font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    #mode-selector {
+      margin: 10px 0;
+    }
+
+    #game {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 0;
+      border: 4px solid #333;
+    }
+
+    .cell {
+      background-color: #fff;
+      border: 2px solid #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      cursor: pointer;
+      opacity: 0;
+      transform: scale(0.6);
+      transition: all 0.3s ease;
+    }
+
+    .cell.filled {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    #message {
+      margin-top: 15px;
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    #restart {
+      margin-top: 10px;
+      padding: 8px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      background-color: #333;
+      color: #fff;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+    }
+
+    #restart:hover {
+      background-color: #555;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Tic-Tac-Toe</h1>
+
+  <div id="scoreboard">
+    <div class="score" id="scoreX">Player X: 0</div>
+    <div class="score" id="scoreO">Player O: 0</div>
+    <div class="score" id="scoreTie">Ties: 0</div>
+  </div>
+
+  <select id="mode-selector">
+    <option value="human">2 Players</option>
+    <option value="ai">Vs AI</option>
+  </select>
+
+  <div id="game"></div>
+
+  <div id="message"></div>
+  <button id="restart">Restart</button>
+
+  <script>
+    const gameContainer = document.getElementById('game');
+    const messageDiv = document.getElementById('message');
+    const restartBtn = document.getElementById('restart');
+    const modeSelector = document.getElementById('mode-selector');
+    const scoreXDiv = document.getElementById('scoreX');
+    const scoreODiv = document.getElementById('scoreO');
+    const scoreTieDiv = document.getElementById('scoreTie');
+
+    let board;
+    let currentPlayer;
+    let gameActive = true;
+    let vsAI = false;
+    let scores = { X: 0, O: 0, Ties: 0 };
+
+    function createBoard() {
+      gameContainer.innerHTML = '';
+      board = Array(9).fill('');
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.dataset.index = i;
+        cell.addEventListener('click', handleCellClick, { once: true });
+        gameContainer.appendChild(cell);
+      }
+      currentPlayer = 'X';
+      messageDiv.textContent = "Player X's turn";
+      gameActive = true;
+    }
+
+    function handleCellClick(e) {
+      const index = e.target.dataset.index;
+      if (!gameActive || board[index]) return;
+
+      board[index] = currentPlayer;
+      e.target.textContent = currentPlayer;
+      e.target.classList.add('filled');
+
+      if (checkWin(currentPlayer)) {
+        messageDiv.textContent = `Player ${currentPlayer} wins! 🎉`;
+        scores[currentPlayer]++;
+        updateScores();
+        gameActive = false;
+        return;
+      }
+
+      if (board.every(cell => cell)) {
+        messageDiv.textContent = "It's a tie! 🤝";
+        scores.Ties++;
+        updateScores();
+        gameActive = false;
+        return;
+      }
+
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      messageDiv.textContent = `Player ${currentPlayer}'s turn`;
+
+      if (vsAI && currentPlayer === 'O') {
+        setTimeout(aiMove, 500);
+      }
+    }
+
+    function checkWin(player) {
+      const winConditions = [
+        [0, 1, 2],
+        [3, 4, 5],
+        [6, 7, 8],
+        [0, 3, 6],
+        [1, 4, 7],
+        [2, 5, 8],
+        [0, 4, 8],
+        [2, 4, 6]
+      ];
+      return winConditions.some(comb => comb.every(i => board[i] === player));
+    }
+
+    function aiMove() {
+      const bestMove = getBestMove();
+      const cell = document.querySelector(`.cell[data-index='${bestMove}']`);
+      cell.click();
+    }
+
+    function getBestMove() {
+      let bestScore = -Infinity;
+      let move;
+      for (let i = 0; i < 9; i++) {
+        if (!board[i]) {
+          board[i] = 'O';
+          let score = minimax(board, 0, false);
+          board[i] = '';
+          if (score > bestScore) {
+            bestScore = score;
+            move = i;
+          }
+        }
+      }
+      return move;
+    }
+
+    function minimax(newBoard, depth, isMaximizing) {
+      if (checkWin('O')) return 10 - depth;
+      if (checkWin('X')) return depth - 10;
+      if (newBoard.every(cell => cell)) return 0;
+
+      if (isMaximizing) {
+        let bestScore = -Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (!newBoard[i]) {
+            newBoard[i] = 'O';
+            let score = minimax(newBoard, depth + 1, false);
+            newBoard[i] = '';
+            bestScore = Math.max(score, bestScore);
+          }
+        }
+        return bestScore;
+      } else {
+        let bestScore = Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (!newBoard[i]) {
+            newBoard[i] = 'X';
+            let score = minimax(newBoard, depth + 1, true);
+            newBoard[i] = '';
+            bestScore = Math.min(score, bestScore);
+          }
+        }
+        return bestScore;
+      }
+    }
+
+    function updateScores() {
+      scoreXDiv.textContent = `Player X: ${scores.X}`;
+      scoreODiv.textContent = `Player O: ${scores.O}`;
+      scoreTieDiv.textContent = `Ties: ${scores.Ties}`;
+    }
+
+    restartBtn.addEventListener('click', createBoard);
+    modeSelector.addEventListener('change', () => {
+      vsAI = modeSelector.value === 'ai';
+      createBoard();
+    });
+
+    // Initialize
+    createBoard();
+  </script>
+</body>
+</html>
